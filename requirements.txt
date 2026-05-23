@@ -1,0 +1,12 @@
+langchain>=0.2.0
+langchain-openai>=0.1.0
+langchain-community>=0.2.0
+langchain-anthropic>=0.1.0
+langgraph>=0.1.0
+faiss-cpu>=1.7.4
+pypdf>=4.0.0
+python-dotenv>=1.0.0
+fastapi>=0.110.0
+uvicorn>=0.29.0
+python-multipart>=0.0.9
+sentence-transformers>=2.7.0
