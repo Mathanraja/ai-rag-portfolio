@@ -110,7 +110,7 @@ python 6_observability_dashboard.py # open http://localhost:8000/dashboard
 
 ## Production Context
 
-These patterns are based on the architecture used in the **enterprise client GenAI Platform** (Infosys INSTA Award, March 2026):
+These patterns reflect production AI platform architecture built and delivered at enterprise scale:
 - 1M+ users in production
 - Zero post-launch incidents
 - 23 production AI tools across 12 engineering teams
