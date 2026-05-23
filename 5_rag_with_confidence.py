@@ -10,7 +10,7 @@ Key additions over basic RAG (file 1):
   4. METRICS TRACKING — tracks all scores (for drift detection demo)
   5. RETRIEVAL QUALITY — checks if retrieved chunks are actually relevant
 
-This is the pattern used in the enterprise client production platform.
+This is the pattern used in enterprise production AI platforms.
 
 Run:
     python 5_rag_with_confidence.py
