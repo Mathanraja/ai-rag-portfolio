@@ -4,7 +4,7 @@
 
 Production-pattern GenAI engineering portfolio demonstrating end-to-end AI system design — RAG pipelines, multi-agent orchestration, confidence scoring, observability, and FastAPI deployment.
 
-Built with: **LangChain · LangGraph · FastAPI · FAISS · HuggingFace · OpenAI**
+Built with: **LangChain · LangGraph · FastAPI · FAISS · HuggingFace · OpenAI · MLflow · XGBoost**
 
 ---
 
@@ -51,6 +51,7 @@ User Query
 | `4_langgraph_multiagent.py` | **LangGraph Multi-Agent** | StateGraph, coordinator + specialist routing, shared TypedDict state, conditional edges |
 | `5_rag_with_confidence.py` | **Production RAG** | Confidence scoring, HITL fallback, source attribution, metrics tracking |
 | `6_observability_dashboard.py` | **AI Observability** | Drift detection, audit trail, live HTML dashboard, rolling metrics |
+| `7_mlflow_experiments.py` | **MLOps / Experiment Tracking** | MLflow runs, hyperparameter sweep, feature importance, Model Registry, Production promotion |
 
 ---
 
@@ -87,6 +88,22 @@ if recent_avg < DRIFT_ALERT_THRESHOLD:
     trigger_alert("Confidence drift detected — knowledge base may be stale")
 ```
 
+### MLflow Experiment Tracking + Model Registry
+```python
+with mlflow.start_run():
+    mlflow.log_params(params)           # hyperparameters
+    mlflow.log_metrics(metrics)         # acc, auc, f1, precision, recall
+    mlflow.log_artifact(plot_path)      # feature importance PNG
+    mlflow.xgboost.log_model(           # auto-registers in Model Registry
+        model, registered_model_name="xgboost-churn-predictor"
+    )
+
+# Promote best run to Production
+client.transition_model_version_stage(
+    name="xgboost-churn-predictor", version=best_version, stage="Production"
+)
+```
+
 ---
 
 ## Quick Start
@@ -102,8 +119,16 @@ OPENAI_API_KEY=your-key-here
 
 Run any file:
 ```bash
-python 4_langgraph_multiagent.py   # multi-agent demo
+python 4_langgraph_multiagent.py    # multi-agent demo
 python 6_observability_dashboard.py # open http://localhost:8000/dashboard
+```
+
+#### File 7 — MLflow Experiment Tracking
+```bash
+pip install mlflow xgboost scikit-learn matplotlib
+python 7_mlflow_experiments.py
+mlflow ui --backend-store-uri sqlite:///mlflow_portfolio.db
+# → open http://localhost:5000 to explore runs, metrics, and model registry
 ```
 
 ---
