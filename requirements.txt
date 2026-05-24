@@ -20,3 +20,7 @@ numpy>=1.26.0
 # File 8, 9, 10 — Testcase Generator, DeepEval, Swagger Agent
 deepeval>=0.21.0
 faker>=24.0.0
+# File 11, 12 — SHAP Explainability, Evidently Drift
+shap>=0.45.0
+evidently>=0.4.30
+scipy>=1.13.0

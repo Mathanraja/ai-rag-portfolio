@@ -6,7 +6,7 @@ Production-pattern GenAI engineering portfolio covering RAG pipelines, multi-age
 LLM quality testing, MLOps, and autonomous agentic testing workflows — aligned with the
 [Testleaf AI Agentic Workflows curriculum](https://testleaf.com).
 
-Built with: **LangChain · LangGraph · FastAPI · FAISS · DeepEval · MLflow · XGBoost · OpenAI**
+Built with: **LangChain · LangGraph · FastAPI · FAISS · DeepEval · MLflow · XGBoost · SHAP · Evidently · OpenAI**
 
 ---
 
@@ -17,7 +17,7 @@ Built with: **LangChain · LangGraph · FastAPI · FAISS · DeepEval · MLflow �
 | 1–3  | RAG & Vector Databases | `1_rag_chatbot.py`, `5_rag_with_confidence.py` |
 | 4–5  | LangChain & LangGraph | `2_agent_memory.py`, `4_langgraph_multiagent.py`, `8_testcase_generator_agent.py` |
 | 6    | LLM Testing with DeepEval | `9_deepeval_llm_testing.py` |
-| 7–12 | Agentic Workflows & Deployment | `3_fastapi_app.py`, `6_observability_dashboard.py`, `7_mlflow_experiments.py`, `10_swagger_api_agent.py` |
+| 7–12 | Agentic Workflows & Deployment | `3_fastapi_app.py`, `6_observability_dashboard.py`, `7_mlflow_experiments.py`, `10_swagger_api_agent.py`, `11_shap_explainability.py`, `12_evidently_drift.py` |
 
 ---
 
@@ -80,6 +80,8 @@ User Query / Requirement / Swagger Spec
 | `8_testcase_generator_agent.py` | **Testcase Generator Agent** | LangGraph workflow, Gherkin BDD output, Playwright stubs, memory-enabled dedup |
 | `9_deepeval_llm_testing.py` | **LLM Quality Testing** | DeepEval metrics, hallucination detection, bias checks, CI/CD quality gate |
 | `10_swagger_api_agent.py` | **Swagger / OpenAPI Agent** | OpenAPI spec parsing, mock data generation, pytest file generation, coverage matrix |
+| `11_shap_explainability.py` | **Explainable AI (XAI)** | SHAP global + local explanations, beeswarm, waterfall, dependence plots, SHAP drift detection, JSON audit trail |
+| `12_evidently_drift.py` | **ML Drift Monitoring** | KS test + PSI drift detection, feature distribution comparison, performance timeline, Evidently HTML reports, CI/CD gate |
 
 ---
 
@@ -146,6 +148,40 @@ else:
     return generate_answer(context, question)  # answer with source attribution
 ```
 
+### SHAP Explainability — Global + Local
+```python
+explainer   = shap.TreeExplainer(model)           # exact SHAP for tree models
+shap_values = explainer.shap_values(X_test)       # (n_samples × n_features)
+
+# Global: which features matter most across ALL predictions
+mean_abs_shap = np.abs(shap_values).mean(axis=0)  # mean |SHAP| per feature
+
+# Local: why did THIS specific prediction happen
+shap.plots.waterfall(explainer(X_sample)[0])      # base_value → feature contributions → f(x)
+
+# Drift: has feature importance changed between time windows?
+pct_change = abs(mean_t1 - mean_t0) / mean_t0     # flag if > 15% change
+```
+
+### Evidently Drift Monitoring + CI/CD Gate
+```python
+# KS test: detects any distributional shape difference
+ks_stat, p_value = scipy.stats.ks_2samp(reference[feature], current[feature])
+
+# PSI: quantifies magnitude (< 0.1 stable, 0.1-0.2 slight, > 0.2 significant)
+psi = sum((cur_pct - ref_pct) * log(cur_pct / ref_pct))
+
+# CI/CD gate — block deployment if > 30% features drifted
+if drift_report.alert_triggered:
+    trigger_retraining_pipeline()
+    sys.exit(1)   # fail the build
+
+# Evidently HTML report (interactive stakeholder dashboard)
+report = Report(metrics=[DataDriftPreset(), DataQualityPreset(), ClassificationPreset()])
+report.run(reference_data=ref_df, current_data=cur_df)
+report.save_html("drift_report.html")
+```
+
 ### MLflow Model Registry + Governed Promotion
 ```python
 with mlflow.start_run():
@@ -185,6 +221,11 @@ python 10_swagger_api_agent.py            # Swagger spec → full pytest test su
 python 6_observability_dashboard.py       # open http://localhost:8000/dashboard
 python 7_mlflow_experiments.py            # XGBoost hyperparameter sweep
 mlflow ui --backend-store-uri sqlite:///mlflow_portfolio.db   # → http://localhost:5000
+
+# XAI & Drift Monitoring
+python 11_shap_explainability.py      # SHAP plots saved to shap_outputs/
+python 12_evidently_drift.py          # drift reports saved to evidently_outputs/
+# → open evidently_outputs/evidently_drift_report.html for interactive dashboard
 ```
 
 ---
