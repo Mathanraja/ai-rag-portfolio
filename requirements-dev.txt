@@ -1,0 +1,4 @@
+# Dev/test dependencies (kept separate from runtime requirements.txt).
+# The core unit tests (tests/test_confidence.py) need only pytest, because the
+# decision-critical logic lives in dependency-free confidence.py.
+pytest>=8.0.0

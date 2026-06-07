@@ -31,52 +31,19 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
+# Pure, dependency-free core logic (config, score parsing, gating, metrics).
+# Extracted into confidence.py so it is unit-testable without API keys / heavy deps.
+from confidence import (
+    CONFIDENCE_THRESHOLD,
+    CHUNK_SIZE,
+    CHUNK_OVERLAP,
+    TOP_K,
+    MetricsStore,
+    parse_confidence_score,
+    should_answer,
+)
+
 load_dotenv()
-
-# ─── CONFIG ───────────────────────────────────────────────────────────────────
-CONFIDENCE_THRESHOLD = 0.70   # below this → fallback to "I don't know"
-CHUNK_SIZE = 500
-CHUNK_OVERLAP = 50
-TOP_K = 4                     # retrieve top 4 chunks
-
-
-# ─── METRICS STORE ────────────────────────────────────────────────────────────
-# In production: write to Azure Log Analytics / CloudWatch / Prometheus
-# Here: in-memory list for demo
-
-class MetricsStore:
-    def __init__(self):
-        self.records = []
-
-    def log(self, question: str, confidence: float, answered: bool, chunks_used: int):
-        record = {
-            "timestamp": datetime.now().isoformat(),
-            "question": question[:80],
-            "confidence": confidence,
-            "answered_autonomously": answered,
-            "chunks_used": chunks_used,
-        }
-        self.records.append(record)
-
-    def summary(self):
-        if not self.records:
-            return "No queries yet."
-        confidences = [r["confidence"] for r in self.records]
-        answered    = sum(1 for r in self.records if r["answered_autonomously"])
-        return (
-            f"Total queries: {len(self.records)} | "
-            f"Avg confidence: {sum(confidences)/len(confidences):.2f} | "
-            f"Autonomous answers: {answered}/{len(self.records)} | "
-            f"Escalated (low confidence): {len(self.records)-answered}/{len(self.records)}"
-        )
-
-    def print_all(self):
-        print("\n=== Query Metrics (Observability Log) ===")
-        for r in self.records:
-            status = "✓ AUTO" if r["answered_autonomously"] else "⚠ ESCALATED"
-            print(f"  [{r['timestamp']}] {status} | conf={r['confidence']:.2f} | {r['question']}")
-        print(f"\n{self.summary()}\n")
-
 
 metrics = MetricsStore()
 
@@ -133,10 +100,11 @@ Respond with ONLY a number between 0.0 and 1.0. Nothing else."""
 
     try:
         response = llm.invoke(prompt)
-        score = float(response.content.strip())
-        return min(max(score, 0.0), 1.0)  # clamp to [0.0, 1.0]
+        # Robustly extract the score: handles "0.8", "Score: 0.85", "0.85/1.0",
+        # "0.9." and "80%" — instead of float() throwing and silently using 0.5.
+        return parse_confidence_score(response.content)
     except (ValueError, AttributeError):
-        return 0.5  # default if scoring fails
+        return 0.5  # default only if the reply is genuinely unparseable
 
 
 def answer_with_confidence(
@@ -157,7 +125,7 @@ def answer_with_confidence(
     confidence = score_confidence(question, chunks, llm)
 
     # 3. Decision: answer autonomously or escalate?
-    if confidence < CONFIDENCE_THRESHOLD:
+    if not should_answer(confidence, CONFIDENCE_THRESHOLD):
         metrics.log(question, confidence, answered=False, chunks_used=len(chunks))
         return {
             "answer": (
